@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UMFF 감수 도구</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue: #1b3a5c;
+      --blue-light: #2a5080;
+      --green: #2a7d5f;
+      --green-light: #38a87e;
+      --bg: #f2f4f6;
+      --surface: #ffffff;
+      --border: #dde2e8;
+      --text: #1a1a1a;
+      --muted: #6b7280;
+      --error: #c0392b;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ─── Header ─── */
+    header {
+      background: var(--blue);
+      color: #fff;
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    }
+    .header-title { font-size: 1.05rem; font-weight: 700; letter-spacing: -.02em; }
+    .header-sub   { font-size: .75rem; opacity: .65; margin-top: 2px; }
+    .btn-key {
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.3);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .82rem;
+      transition: background .15s;
+    }
+    .btn-key:hover { background: rgba(255,255,255,.25); }
+
+    /* ─── API Key Bar ─── */
+    .key-bar {
+      background: #e8eef4;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 32px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .key-bar.open { display: flex; }
+    .key-bar label { font-size: .8rem; color: #444; white-space: nowrap; }
+    .key-bar input {
+      flex: 1; min-width: 200px; max-width: 380px;
+      padding: 7px 11px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: monospace; font-size: .82rem;
+    }
+    .btn-save {
+      background: var(--blue); color: #fff;
+      border: none; padding: 7px 16px;
+      border-radius: 6px; cursor: pointer; font-size: .82rem;
+    }
+    .btn-save:hover { background: var(--blue-light); }
+    #key-status { font-size: .78rem; color: var(--muted); }
+
+    /* ─── Main ─── */
+    .main { max-width: 1000px; margin: 0 auto; padding: 28px 24px; }
+
+    .card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 22px 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      margin-bottom: 20px;
+    }
+
+    .card-label {
+      font-size: .75rem; font-weight: 700;
+      color: var(--muted); text-transform: uppercase;
+      letter-spacing: .06em; margin-bottom: 12px;
+    }
+
+    textarea {
+      width: 100%; min-height: 200px;
+      padding: 14px 16px;
+      border: 1px solid var(--border); border-radius: 8px;
+      font-size: .93rem; line-height: 1.75;
+      resize: vertical; font-family: inherit; color: var(--text);
+      transition: border-color .15s;
+    }
+    textarea:focus { outline: none; border-color: var(--green); }
+
+    .input-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 12px;
+    }
+    .char-count { font-size: .78rem; color: var(--muted); }
+
+    .btn-run {
+      background: var(--green); color: #fff;
+      border: none; padding: 11px 30px;
+      border-radius: 8px; font-size: .95rem; font-weight: 700;
+      cursor: pointer; transition: background .15s;
+      letter-spacing: -.01em;
+    }
+    .btn-run:hover:not(:disabled) { background: var(--green-light); }
+    .btn-run:disabled { background: #b0b8c1; cursor: not-allowed; }
+
+    /* ─── Loading ─── */
+    .loading {
+      display: none; text-align: center;
+      padding: 48px 24px; color: var(--muted);
+    }
+    .loading.show { display: block; }
+    .spinner {
+      display: inline-block;
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin .75s linear infinite;
+      margin-bottom: 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-msg { font-size: .9rem; }
+    .loading-sub { font-size: .78rem; color: #aaa; margin-top: 6px; }
+
+    /* ─── Error ─── */
+    .error-box {
+      background: #fff0f0; border: 1px solid #f5c6c6;
+      border-radius: 8px; padding: 14px 18px;
+      color: var(--error); font-size: .88rem;
+      margin-bottom: 20px; display: none;
+    }
+    .error-box.show { display: block; }
+
+    /* ─── Stream preview ─── */
+    .stream-box {
+      display: none;
+      background: #f8faf8; border: 1px solid #c8e6d0;
+      border-radius: 8px; padding: 16px 18px;
+      font-size: .85rem; line-height: 1.7;
+      white-space: pre-wrap; max-height: 280px;
+      overflow-y: auto; color: #3a4a3a;
+      margin-bottom: 20px;
+    }
+    .stream-box.show { display: block; }
+
+    /* ─── Results ─── */
+    .results { display: none; }
+    .results.show { display: block; }
+
+    .tabs {
+      display: flex; gap: 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .tab {
+      padding: 9px 18px;
+      cursor: pointer; font-size: .87rem; font-weight: 500;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color .15s;
+      white-space: nowrap;
+    }
+    .tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 700; }
+    .tab:hover:not(.active) { color: var(--text); }
+    .badge {
+      display: inline-block;
+      background: var(--green); color: #fff;
+      border-radius: 10px; padding: 0 7px;
+      font-size: .72rem; font-weight: 700;
+      margin-left: 5px; vertical-align: middle;
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .panel-content {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 22px 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+
+    .result-text {
+      font-size: .9rem; line-height: 1.85;
+      white-space: pre-wrap; color: var(--text);
+    }
+
+    .empty-msg {
+      font-size: .88rem; color: var(--muted);
+      text-align: center; padding: 32px;
+    }
+
+    /* Revised text gets monospace */
+    #content3 { font-family: 'Noto Sans KR', inherit; }
+
+    .panel-footer {
+      margin-top: 14px; display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .btn-copy {
+      background: none; border: 1px solid var(--border);
+      color: var(--muted); padding: 6px 14px;
+      border-radius: 6px; cursor: pointer; font-size: .8rem;
+      transition: all .15s;
+    }
+    .btn-copy:hover { background: var(--bg); color: var(--text); }
+    .btn-copy.copied { color: var(--green); border-color: var(--green); }
+
+    /* ─── Token counter ─── */
+    .token-bar {
+      display: none;
+      background: #f0faf5; border: 1px solid #b5e5cc;
+      border-radius: 8px; padding: 10px 16px;
+      margin-bottom: 20px;
+      font-size: .8rem; color: #2a5a3e;
+      gap: 20px; flex-wrap: wrap; align-items: center;
+    }
+    .token-bar.show { display: flex; }
+    .token-item { display: flex; flex-direction: column; gap: 2px; }
+    .token-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .token-value { font-weight: 700; font-size: .9rem; }
+    .token-cost  { margin-left: auto; font-size: .85rem; color: var(--green); font-weight: 700; }
+
+    /* ─── Model selector ─── */
+    .model-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-top: 14px; flex-wrap: wrap;
+    }
+    .model-row label { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+    .model-btn {
+      padding: 6px 16px;
+      border: 1.5px solid var(--border); border-radius: 20px;
+      background: #fff; color: var(--muted);
+      font-size: .82rem; cursor: pointer; transition: all .15s;
+    }
+    .model-btn:hover { border-color: #aaa; color: var(--text); }
+    .model-btn.active-sonnet { border-color: var(--blue); color: var(--blue); background: #eef3f9; font-weight: 700; }
+
+    /* ─── Model guide ─── */
+    .model-guide {
+      display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .model-guide-card {
+      flex: 1; min-width: 220px;
+      border-radius: 10px; padding: 14px 16px;
+      font-size: .8rem; line-height: 1.7;
+    }
+    .model-guide-card.sonnet { background: #eef3f9; border: 1px solid #b0c8e8; }
+    .model-guide-title {
+      font-weight: 700; font-size: .85rem; margin-bottom: 6px;
+    }
+    .model-guide-card.sonnet .model-guide-title { color: var(--blue); }
+    .guide-good  { color: #2a7d5f; }
+    .guide-bad   { color: #b04030; }
+
+    /* ─── Glossary notice ─── */
+    .glossary-notice {
+      font-size: .75rem; color: var(--muted);
+      background: #f8f9fa; border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 14px;
+      margin-bottom: 20px;
+    }
+    .glossary-notice.warn { color: #8a6d00; background: #fffbe6; border-color: #ffe58f; }
+    .glossary-notice.ok   { color: #2a7d5f; background: #f0faf5; border-color: #b5e5cc; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="header-title">울산울주세계산악영화제 · 감수 도구</div>
+    <div class="header-sub">Ulsan Ulju Mountain Film Festival · Publication Review</div>
+  </div>
+  <button class="btn-key" onclick="toggleKeyBar()">⚙ API Key</button>
+</header>
+
+<div class="key-bar" id="keyBar">
+  <label>Anthropic API Key</label>
+  <input type="password" id="keyInput" placeholder="sk-ant-..." />
+  <button class="btn-save" onclick="saveKey()">저장</button>
+  <span id="key-status"></span>
+</div>
+
+<div class="main">
+
+  <div id="glossaryNotice" class="glossary-notice">글로서리 로드 중...</div>
+
+  <div class="card">
+    <div class="card-label">감수할 텍스트</div>
+    <textarea id="inputText"
+      placeholder="여기에 감수할 텍스트를 붙여 넣으세요..."
+      oninput="onInput()"></textarea>
+    <div class="model-row">
+      <label>모델</label>
+      <button class="model-btn active-sonnet" id="btnSonnet" onclick="selectModel('sonnet')">Sonnet 5</button>
+    </div>
+    <div class="input-footer">
+      <span class="char-count" id="charCount">0자</span>
+      <button class="btn-run" id="runBtn" onclick="runReview()">감수 시작</button>
+    </div>
+  </div>
+
+  <div class="model-guide">
+    <div class="model-guide-card sonnet">
+      <div class="model-guide-title">Sonnet 5 — 정확 · 권장</div>
+      <span class="guide-good">✔ 유리한 경우</span><br>
+      프로그램 노트·보도자료 등 공식 출판물<br>
+      고유명사·외래어가 밀집된 텍스트<br>
+      CSV 175행 전체를 꼼꼼히 대조해야 할 때<br>
+      최종 인쇄 전 검수<br>
+      <br>
+      <span class="guide-bad">✘ 불리한 경우</span><br>
+      간단한 오탈자만 확인할 때 (비용 과다)<br>
+      빠른 피드백이 우선일 때
+    </div>
+  </div>
+
+  <div class="token-bar" id="tokenBar">
+    <div class="token-item">
+      <span class="token-label">입력 토큰</span>
+      <span class="token-value" id="tokIn">—</span>
+    </div>
+    <div class="token-item">
+      <span class="token-label">캐시 쓰기</span>
+      <span class="token-value" id="tokCacheWrite">—</span>
+    </div>
+    <div class="token-item">
+      <span class="token-label">캐시 읽기</span>
+      <span class="token-value" id="tokCacheRead">—</span>
+    </div>
+    <div class="token-item">
+      <span class="token-label">출력 토큰</span>
+      <span class="token-value" id="tokOut">—</span>
+    </div>
+    <div class="token-cost" id="tokCost">—</div>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-msg">감수 진행 중입니다…</div>
+    <div class="loading-sub">글로서리와 표기 규칙을 대조하는 중입니다</div>
+  </div>
+
+  <div class="stream-box" id="streamBox"></div>
+
+  <div class="results" id="results">
+    <div class="tabs" id="tabs">
+      <div class="tab active" onclick="switchTab(0)">수정 제안 목록<span class="badge" id="badge0"></span></div>
+      <div class="tab"        onclick="switchTab(1)">확인 필요 목록<span class="badge" id="badge1"></span></div>
+      <div class="tab"        onclick="switchTab(2)">요약</div>
+      <div class="tab"        onclick="switchTab(3)">수정 제안 반영본</div>
+    </div>
+
+    <div class="panel active" id="panel0">
+      <div class="panel-content">
+        <div class="result-text" id="content0"></div>
+      </div>
+    </div>
+    <div class="panel" id="panel1">
+      <div class="panel-content">
+        <div class="result-text" id="content1"></div>
+      </div>
+    </div>
+    <div class="panel" id="panel2">
+      <div class="panel-content">
+        <div class="result-text" id="content2"></div>
+      </div>
+    </div>
+    <div class="panel" id="panel3">
+      <div class="panel-content">
+        <div class="result-text" id="content3"></div>
+        <div class="panel-footer">
+          <button class="btn-copy" id="copyBtn" onclick="copyRevised()">복사</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .main -->
+
+<script>
+// ═══════════════════════════════════════════════
+//  Embedded Glossary (fallback if fetch fails)
+// ═══════════════════════════════════════════════
+const EMBEDDED_CSV = `구분,국문,영문,비고
+영화제명,제9회 울산울주세계산악영화제,9th Ulsan Ulju Mountain Film Festival,
+영화제명,2024 울산울주세계산악영화제,Ulsan Ulju Mountain Film Festival 2024,
+인명,이순걸,Lee Soon-geol,
+인명,엄홍길,Um Hong-gil,
+인명,스티븐 베너블스,Stephen Venables,
+인명,크리스 보닝턴,Chris Bonington,
+인명,라인홀트 메스너,Reinhold Messner,
+장소,영남알프스 복합웰컴센터,Yeongnam Alps Welcome Center,
+장소,울주 시네마,Ulju Cinema,
+장소,광장,Square,
+장소,식음료부스,Food Booth,
+장소,옥상,Rooftop,
+장소,데크 쉼터,Deck Lounge,
+장소,힐링 스테이지,Healing Stage,
+장소,움프 놀이터,UMFF Playground,
+장소,소공연장,Mini Stage,
+장소,움프 로드,UMFF Road,
+장소,산악문화관,Mountain House,
+장소,영상체험관,Experience House,
+장소,프레스센터,Press Center,
+장소,게스트 시사실,Guest Video Room,
+장소,세미나실,Seminar Room,
+장소,안내,Information,
+장소,티켓부스,Ticket Booth,
+장소,기념품샵,Gift Shop,
+장소,회의실,Meeting Room,
+장소,움프 시네마,UMFF Cinema,
+장소,알프스 시네마 1,Alps Cinema 1,
+장소,알프스 시네마 2,Alps Cinema 2,
+장소,언덕 극장,Hill Cinema,
+장소,카페 뒤 극장,Cafe Cinema,
+장소,울주 시네마 1,Ulju Cinema 1,
+장소,울주 시네마 2,Ulju Cinema 2,
+장소,울주 시네마 3,Ulju Cinema 3,
+섹션,국제경쟁,International Competition,
+섹션,아시아경쟁,Asian Competition,
+섹션,산,Mountain,
+섹션,자연,Nature,
+섹션,인간,Human,
+섹션,올해의 산,Guest Country,
+섹션,- 히말라야 - 네팔,- Himalaya - NEPAL,
+섹션,"헬로, 트렌토!","Hello, Trento!",
+섹션,"10년, 10편","10 years, 10 films",
+섹션,코리안 웨이브,Korean Wave,
+섹션,투게더,Together,
+섹션,움프프로젝트,UMFF Project,
+섹션,- 2025 움프서밋,- UMFFsummit 2025,
+섹션,- 2025 움프멘터리,- UMFFmentary 2025,
+시상,대상,Grand Prize,
+시상,작품상,Best Film,
+시상,감독상,Best Director,
+시상,촬영상,Best Cinematography,
+시상,심사위원 특별상,Special Jury Prize,
+시상,넷팩상,NETPAC Award,
+시상,청소년심사위원상,Youth Jury Award,
+시상,산악영화 관객상,Audience Award - Mountain Film,
+시상,울산울주세계산악문화상,Ulsan Ulju Mountain Culture Award,
+시상,특별공로상,Special Achievement Award,
+프로그램,게스트와의 만남,Guest Visit,영화 감독·배우 등 관계자 미참석 시
+프로그램,개막작 / 폐막작,Opening Film / Closing Film,
+프로그램,문화가 있는 날 움프극장,UMFF Screening,
+프로그램,찾아가는 움프극장,,
+프로그램,UMCA 강연,UMCA Lecture,
+프로그램,자연에서 노래하다,Singing in Nature,
+프로그램,자연에서 이야기하다,Talking in Nature,
+프로그램,자연에서 채우다,Playing in Nature,
+프로그램,자연에서 펼치다,Viewing in Nature,
+프로그램,온라인 상영관,UMFF on Air,
+프로그램,게스트와의 만남,Q&A,영화 감독·배우 등 관계자 참석 시
+프로그램,움프 토크,UMFF Talk,영화 관계자 미참석 / 상영 전 해설 포함
+프로그램,움프 무대인사,UMFF Greeting,
+프로그램,움프 포럼,UMFF Forum,
+프로그램,비박 상영,Bivouac Screening,
+프로그램,배리어프리 상영,Barrier-free,
+프로그램,라이브 더빙 극장,Live Dud Theater,
+용어,청소년심사위원,Youth Jury,
+용어,개막식 / 폐막식,Opening Ceremony / Closing Ceremony,
+용어,움프 서포터즈,UMFF Supporters,
+용어,온라인 상영관 관람권,UMFF on Air Ticket,
+용어,움프 패스,UMFF Pass,
+용어,장소,Venue,
+용어,소요시간,Duration,
+용어,일시,Date/Time,
+용어,구성,Content,
+용어,관객리뷰단,Audience Reviewer,
+국가,한국,Korea,
+국가,미국,USA,
+국가,대만,Taiwan,
+국가,홍콩,"Hong Kong, China",
+등급,전체 관람가,General (G),
+등급,12세 이상 관람가,Under 12 not admitted (12),
+등급,15세 이상 관람가,Under 15 not admitted (15),
+등급,18세 이상 관람가,Under 18 not admitted (18),
+자막,영자막 있음,English Subtitles,
+자막,영자막 없음,No English Subtitles,
+자막,대사 없음,No Dialogue,
+월,1월,Jan.,
+월,2월,Feb.,
+월,3월,Mar.,
+월,4월,Apr.,
+월,5월,May.,
+월,6월,June,
+월,7월,July,
+월,8월,Aug.,
+월,9월,Sep.,
+월,10월,Oct.,
+월,11월,Nov.,
+월,12월,Dec.,
+가격,"15,000원","15,000 KRW",
+가격,"3,000원","3,000 KRW",
+주소,"44952 울산광역시 울주군 알프스온천5길 103-8 영상체험관 B1, 울산울주세계산악영화제 사무국","Ulsan Ulju Mountain Film Festival office, B1, Experience House, 103-8 Alpeuseuoncheon 5-gil, Ulju-gun, Ulsan, Korea 44952",
+전화번호,052 248 6450,+82 52 248 6450,
+해외영화제,핫독국제다큐멘터리영화제,Hot Docs International Documentary Film Festival,
+해외영화제,밴프산악영화제,Banff Center Mountain Film,
+해외영화제,켄달산악축제,Kendal Mountain Festival,
+해외영화제,선댄스영화제,Sundance Film Festival,
+해외영화제,와일드스크린영화제,Wildscreen Film Festival,
+해외영화제,트렌토영화제,Trento Film Festival,
+해외영화제,반스코국제산악영화제,Bansko International Film Festival for Mountains,
+해외영화제,빌바오산악영화제,Bilbao Mendi Film Festival,
+해외영화제,체르비노국제산악영화제,Cervino Cine Mountain Festival,
+해외영화제,던디산악영화제,Dundee Mountain Film Festival,
+해외영화제,윌리암스버그독립영화제,Williamsburg Independent Film Festival,
+해외영화제,텔룰라이드산악영화제,Telluride Mountain Film Festival,
+해외영화제,사비니애니메이션영화제,Animation Film Festival of Savigny,
+해외영화제,로테르담국제영화제,International Film Festival Rotterdam,
+해외영화제,비종뒤릴영화제,Visions du Réel,
+해외영화제,포르토벨로영화제,Portobello Film Festvial,
+해외영화제,시네마뒤릴,Cinéma du Réel,
+해외영화제,에든버러국제영화제,Edinburg International Film Festival,
+해외영화제,누보시네마영화제,Festival du Nouveau Cinema,
+해외영화제,카를로비바리국제영화제,Karlovy Vary International Film Festival,
+해외영화제,브루클린영화제,Brooklyn Film Fest,
+해외영화제,아스펜단편영화제,Aspen Shortsfest,
+해외영화제,앤아버영화제,Ann Arbor Film Festival,
+해외영화제,예테보리국제영화제,Gothenburg Film Festival,
+해외영화제,브졸국제아시아영화제,Vesoul International Film Festival of Asian Cinemas,
+해외영화제,오트랑국제산악영화제,Festival International du Film de Montagne Autrans,
+해외영화제,그라츠산악영화제,International Film Festival Graz,
+해외영화제,더치산악영화제,Dutch Mountain Film Festival,
+해외영화제,클레르몽페랑국제단편영화제,Clermont-Ferrand,
+해외영화제,내쉬빌영화제,Nashville Film Festival,
+해외영화제,크라쿠프영화제,Krakow Film Festival,
+해외영화제,예루살렘영화제,Jerusalem Film Festival,
+해외영화제,칸영화제,Cannes Film Festival,
+해외영화제,밴쿠버국제영화제,Vancouver International Film Festival,
+해외영화제,토론토국제영화제,Toronto International Film Festival,
+해외영화제,라이프치히국제다큐멘터리영화제,DOK Leipzig - International Festival for Documentary Film,
+해외영화제,마르델플라타국제영화제,Mar del Plata International Film Festival,
+해외영화제,탐페레영화제,Tampere Film Festival,
+해외영화제,카트만두세계산악영화제,Kathmandu International Mountain Film Festival,
+해외학교,런던예술대학교,University of the Arts London,
+해외학교,스코페드라마예술대학,Faculty of Dramatic Arts Skopje,
+해외학교,국립연극영화아카데미,National Academy for Theatre and Film Arts(NATFA),
+해외학교,폼페우파브라대학교,Pompeu Fabra University,
+해외학교,뒤셀도르프예술대학,Art Academy of Düsseldorf,
+해외학교,빈영화아카데미,Vienna Film Academy,
+해외학교,미들베리대학,Middlebury College,
+해외학교,요크대학교,York University,
+해외학교,존무어대학,John Moores University,
+해외학교,루쉰미술아카데미,Lu Xun Academy of Fine Arts,
+해외학교,충칭대학교,Chongqing University,
+해외학교,콜롬비아국립대학교,National University of Colombia,
+해외학교,베오그라드대학교,University of Belgrade,
+해외학교,코넬대학교,Cornell University,
+해외학교,바츨라프홀라르대학교,Václav Hollar College,
+해외학교,바덴뷔르템베르크영화학교,Filmakademie Baden-Württemberg,
+해외학교,푸젠가톨릭대학교,Fu Jen Catholic University,
+해외학교,루체른응용과학예술대학,Lucerne University of Applied Sciences and Arts,
+해외학교,위트레흐트예술대학,University of the Arts Utrecht,
+해외학교,빈데샤임대학,Windesheim College,
+해외학교,휴베어드대학,Hugh Baird College,
+해외학교,타우슨대학교,Towson University,
+해외학교,함부르크대학,Hamburg College,
+해외학교,콘코디아대학교,Concordia University,`;
+
+const EMBEDDED_RULES = `# 표기 규칙 (Notation Rules)
+
+울산울주세계산악영화제 출판물 표기 규칙.
+국문↔영문 대조쌍은 proper-nouns.csv에, 규칙은 이 파일에 둔다.
+
+## 영화 제목 표기
+- 영화 제목은 꺽쇠 < > 를 사용하고, 영문 제목은 이탤릭체로 쓴다. (예: <화양연화> / *In the Mood for Love*)
+- 국영문 병기 시에는 꺽쇠만 사용한다. (예: <영원과 하루 Eternity and a Day>)
+- 저작권자의 별도 제목표기 요청이 있을 경우 요청에 따라 표기한다.
+- 제목·제작연도·감독을 함께 표기할 경우:
+  - <화양연화>(왕가위, 2000) / In the Mood for Love(Wang Karwai, 2000)
+  - <영원과 하루 Eternity and a Day>(테오 앙겔로풀로스 Theo Angelopoulos, 1998)
+
+## 작품 정보 표기
+- 표기 순서: 제작국가, 제작연도, 러닝타임, 색채, 카테고리, 관람 등급.
+- 예: Korea | 2015 | 114min | Color | Documentary | G
+
+## 기타 영화 관련
+- 제작연도는 마지막 최종 작업(제작)이 완료된 시점만 표기한다. (2002-2003 → X, 2003 → O)
+- 러닝타임은 분·초 단위 모두 올림하여 분 단위로만 표기한다. 숫자 바로 뒤에 min, 마침표 없음. (예: 53min)
+- 색채 표기: 컬러는 Color, 흑백은 B&W.
+- 프리미어 표기: World Premiere / International Premiere / Asian Premiere / Korean Premiere 중 해당 사항 표기.
+
+## 서적 표기
+- 도서 제목은 겹낫표 『 』, 영문은 이탤릭, 저자명은 ( ) 안에 표기한다.
+- 예: 『도전』 (크리스 보닝턴) / *Cahier du Cinema* (Chris Bonington)
+
+## 기타 표기 (논문·정기간행물·TV·전시·음반·공연 등)
+- 논문·정기간행물·TV 프로그램의 국문 제목은 낫표 「 」, 영문은 이탤릭, 저자명은 ( ).
+- 전시는 《 》 사용, 국영문 동일.
+- 음반의 한글·영문 표기는 낫표 「 」 안에, 노래 제목은 작은따옴표 ' '.
+- 학교·단체·회사 명칭의 한글 표기는 띄어쓰기 없음. (예: 울주세계산악영화제조직위원회)
+- 공연: 국문은 작은따옴표 ' ' / 영문은 따옴표 없이 앞 글자만 대문자, 이탤릭
+
+## 이름 표기
+- 외국인의 이름은 현지 발음에 가깝게 표기함을 원칙으로 하되, 현행 외래어 표기법을 준수한다.
+- 한국·중국·일본 등 한자식 이름은 성을 앞에 표기하고 성은 대문자로. 영문 이름일 경우 성을 뒤에 표기.
+- 한국·중국 이름은 성과 이름을 붙여서 명기한다.
+- 별명·애칭은 첫 번째 언급 시 작은따옴표 ' ' 안에 표기하고, 이후에는 별도 문장부호를 쓰지 않는다.
+
+## 일반 콘텐츠 (문장부호) — 국영문 동일
+- 대화 문구, 인용 구문은 큰따옴표 " " 를 사용한다.
+- 인용구를 문장 그대로 사용하지 않을 경우 작은따옴표 ' ' 를 사용한다.
+- 말줄임표는 아래 점 3개만 사용한다.
+- 콜론(:), 세미콜론(;)은 앞 글자와 붙여 쓰고 뒤에 오는 글자와는 한 칸 띄운다.
+
+## 날짜 / 시간 표기
+- 날짜·시간: 9. 26.(금) 19:00 / Sep. 26(Fri) 19:00
+- 기간: 9. 26.(금) ~ 9. 20.(화) 09:00 ~ 20:00 / Sep. 26(Fri) - 30(Tue) 09:00 - 20:00
+- 24시간 표시: 04:00 / 16:00 (4 digit 방식). AM/PM 사용하지 않음.
+- n번째·n주년: 표지 등에서는 th를 윗첨자로 표기, 본문에서는 윗첨자 X.
+
+## 회사 표기
+- 회사 공식 표기를 따른다: Co. / Inc. / Ltd. / Co.,Ltd.`;
+
+// ═══════════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════════
+let properNouns  = EMBEDDED_CSV;
+let notationRules = EMBEDDED_RULES;
+let glossaryReady = false;
+let selectedModel = 'sonnet';
+
+const MODEL_CONFIG = {
+  sonnet: {
+    id:         'claude-sonnet-5',
+    label:      'Sonnet 5',
+    // 2026-08-31까지 인트로 할인가($2/$10). 이후 정가($3/$15)로 직접 갱신 필요.
+    input:      2.00,
+    cacheWrite: 2.50,
+    cacheRead:  0.20,
+    output:     10.00,
+  },
+  haiku: {
+    id:         'claude-haiku-4-5-20251001',
+    label:      'Haiku 4.5',
+    input:      0.80,
+    cacheWrite: 1.00,
+    cacheRead:  0.08,
+    output:     4.00,
+  },
+};
+
+// ═══════════════════════════════════════════════
+//  Glossary loader
+// ═══════════════════════════════════════════════
+async function loadGlossary() {
+  const notice = document.getElementById('glossaryNotice');
+  try {
+    const [csv, md] = await Promise.all([
+      fetch('./glossary/proper-nouns.csv').then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }),
+      fetch('./glossary/notation-rules.md').then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+    ]);
+    properNouns   = csv;
+    notationRules = md;
+    glossaryReady = true;
+    notice.className = 'glossary-notice ok';
+    notice.textContent = '✓ 글로서리 로드 완료 (proper-nouns.csv · notation-rules.md)';
+  } catch {
+    glossaryReady = true; // use embedded
+    notice.className = 'glossary-notice warn';
+    notice.textContent = '⚠ 글로서리 파일을 로드하지 못했습니다. 내장된 데이터로 실행합니다. (서버 환경에서 실행하면 최신 파일을 불러옵니다)';
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  System Prompt
+// ═══════════════════════════════════════════════
+function buildSystemPrompt() {
+  return `UMFF(울산울주세계산악영화제) 출판물 교정·감수자. 오류만 지적하며 문체·내용은 임의로 바꾸지 않는다.
+
+## 점검 항목
+1. 오탈자
+2. 띄어쓰기 중복·누락
+3. 맞춤법·문법
+4. 고유명사 — 글로서리(proper-nouns.csv)와 일치하는지
+5. 감독명·작품명 — CSV에 있으면 그 표기와 정확히 일치하는지
+6. 표기 규칙 — notation-rules 준수 (제목 꺽쇠 < >, 도서 낫표 『』, 러닝타임·색채·날짜·인명·문장부호)
+7. 한·영 병기 시 양쪽이 같은 대상을 가리키는지
+
+## 원칙
+- CSV·규칙에 있는 표기는 그대로 쓴다 (더 자연스러워 보여도 바꾸지 않는다).
+- CSV에 없는 고유명사는 추측하지 않고 [확인필요: 원문]으로 표시한다 ("틀린 것"이 아닌 "미확정").
+- 국문 하나에 영문이 여럿일 때(예: 게스트와의 만남 = Guest Visit / Q&A) 문맥에 맞는 것을 쓰고, 애매하면 [확인필요].
+- 의미·정보를 임의로 더하거나 빼지 않는다. 최종 확정은 담당자의 몫이다.
+- 여러 수정을 묶어 원문을 통째로 교체하지 않는다.
+
+---
+
+## 참조 자료 1: proper-nouns.csv (확정된 고유명사·감독명·작품명 등 국문↔영문 대조표)
+\`\`\`
+${properNouns}
+\`\`\`
+
+---
+
+## 참조 자료 2: 표기 규칙 (notation-rules)
+${notationRules}
+
+---
+
+## 출력 형식 (반드시 아래 구분자를 그대로 사용할 것)
+
+[SECTION:수정제안목록]
+위치 / 원문 → 제안 / 사유  (한 줄씩. 수정 사항이 없으면 "수정 제안 없음" 한 줄만 출력)
+[/SECTION]
+
+[SECTION:확인필요목록]
+CSV에 없어 확인이 필요한 항목 목록 (없으면 "확인 필요 항목 없음" 한 줄만 출력)
+[/SECTION]
+
+[SECTION:요약]
+오탈자 N건, 띄어쓰기 N건, 고유명사 N건, 표기 규칙 N건  (집계표)
+[/SECTION]
+
+[SECTION:수정제안반영본]
+수정 제안을 반영한 전체 글 원문
+[/SECTION]`;
+}
+
+// ═══════════════════════════════════════════════
+//  Model selector
+// ═══════════════════════════════════════════════
+function selectModel(key) {
+  selectedModel = key;
+  document.getElementById('btnSonnet').className = 'model-btn' + (key === 'sonnet' ? ' active-sonnet' : '');
+  document.getElementById('btnHaiku').className  = 'model-btn' + (key === 'haiku'  ? ' active-haiku'  : '');
+}
+
+// ═══════════════════════════════════════════════
+//  API Key
+// ═══════════════════════════════════════════════
+function toggleKeyBar() {
+  const bar = document.getElementById('keyBar');
+  bar.classList.toggle('open');
+  if (bar.classList.contains('open')) {
+    const saved = localStorage.getItem('umff_api_key') || '';
+    document.getElementById('keyInput').value = saved;
+    refreshKeyStatus();
+  }
+}
+
+function saveKey() {
+  const val = document.getElementById('keyInput').value.trim();
+  if (!val) { alert('API Key를 입력하세요.'); return; }
+  localStorage.setItem('umff_api_key', val);
+  refreshKeyStatus();
+  document.getElementById('keyBar').classList.remove('open');
+}
+
+function refreshKeyStatus() {
+  const key = localStorage.getItem('umff_api_key') || '';
+  const el = document.getElementById('key-status');
+  if (key) {
+    el.textContent = `저장됨: ${key.slice(0, 10)}…`;
+    el.style.color = '#2a7d5f';
+  } else {
+    el.textContent = '미설정';
+    el.style.color = '#999';
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  UI helpers
+// ═══════════════════════════════════════════════
+function onInput() {
+  const len = document.getElementById('inputText').value.length;
+  document.getElementById('charCount').textContent = `${len.toLocaleString()}자`;
+}
+
+function switchTab(idx) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === idx));
+}
+
+function setLoading(on) {
+  document.getElementById('loading').classList.toggle('show', on);
+  document.getElementById('runBtn').disabled = on;
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorBox');
+  el.textContent = `오류: ${msg}`;
+  el.classList.add('show');
+}
+
+function clearError() {
+  document.getElementById('errorBox').classList.remove('show');
+}
+
+function showStream(text) {
+  const el = document.getElementById('streamBox');
+  el.textContent = text;
+  el.classList.add('show');
+  el.scrollTop = el.scrollHeight;
+}
+
+function hideStream() {
+  document.getElementById('streamBox').classList.remove('show');
+  document.getElementById('streamBox').textContent = '';
+}
+
+function countNonEmptyLines(text) {
+  if (!text || text.trim() === '' ||
+      text.trim() === '수정 제안 없음' ||
+      text.trim() === '확인 필요 항목 없음') return 0;
+  return text.split('\n').filter(l => l.trim()).length;
+}
+
+// ═══════════════════════════════════════════════
+//  Response parser
+// ═══════════════════════════════════════════════
+function parseResponse(raw) {
+  const get = (key) => {
+    const re = new RegExp(`\\[SECTION:${key}\\]([\\s\\S]*?)\\[\\/SECTION\\]`);
+    const m = raw.match(re);
+    return m ? m[1].trim() : '';
+  };
+  return {
+    suggestions : get('수정제안목록'),
+    checkNeeded : get('확인필요목록'),
+    summary     : get('요약'),
+    revised     : get('수정제안반영본'),
+  };
+}
+
+// ═══════════════════════════════════════════════
+//  Main: run review
+// ═══════════════════════════════════════════════
+async function runReview() {
+  clearError();
+  hideStream();
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('tokenBar').classList.remove('show');
+
+  const text = document.getElementById('inputText').value.trim();
+  if (!text) { showError('텍스트를 입력하세요.'); return; }
+
+  const apiKey = localStorage.getItem('umff_api_key');
+  if (!apiKey) {
+    showError('API Key가 설정되지 않았습니다. 우측 상단 ⚙ API Key 버튼을 눌러 입력하세요.');
+    toggleKeyBar();
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'prompt-caching-2024-07-31',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: MODEL_CONFIG[selectedModel].id,
+        max_tokens: 8000,
+        stream: true,
+        output_config: selectedModel === 'sonnet' ? { effort: 'medium' } : undefined,
+        system: [{ type: 'text', text: buildSystemPrompt(), cache_control: { type: 'ephemeral' } }],
+        messages: [{ role: 'user', content: `다음 텍스트를 감수해 주세요:\n\n${text}` }]
+      })
+    });
+
+    if (!response.ok) {
+      let msg = `HTTP ${response.status}`;
+      try { const e = await response.json(); msg = e.error?.message || msg; } catch {}
+      throw new Error(msg);
+    }
+
+    // ── Stream ──
+    const reader  = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+    let inputUsage = null;
+    let usageData = null;
+
+    document.getElementById('loading').querySelector('.loading-msg').textContent = '감수 진행 중… (실시간 출력)';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const evt = JSON.parse(data);
+          if (evt.type === 'message_start' && evt.message?.usage) {
+            inputUsage = evt.message.usage;
+          }
+          if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
+            fullText += evt.delta.text;
+            showStream(fullText);
+          }
+          if (evt.type === 'message_delta' && evt.usage) {
+            usageData = evt.usage;
+          }
+        } catch {}
+      }
+    }
+
+    // ── Parse & display ──
+    setLoading(false);
+    hideStream();
+
+    // ── Token counter ──
+    if (usageData || inputUsage) {
+      // message_start: input_tokens, cache_creation_input_tokens, cache_read_input_tokens
+      // message_delta: output_tokens
+      const inTok      = inputUsage?.input_tokens                || 0;
+      const cacheWrite = inputUsage?.cache_creation_input_tokens || 0;
+      const cacheRead  = inputUsage?.cache_read_input_tokens     || 0;
+      const outTok     = usageData?.output_tokens                || 0;
+      const p = MODEL_CONFIG[selectedModel];
+      const costUSD = (inTok * p.input + cacheWrite * p.cacheWrite + cacheRead * p.cacheRead + outTok * p.output) / 1_000_000;
+      const costKRW = Math.round(costUSD * 1380);
+      const cacheHit = cacheRead > 0;
+      document.getElementById('tokIn').textContent         = inTok.toLocaleString();
+      document.getElementById('tokCacheWrite').textContent = cacheWrite > 0 ? cacheWrite.toLocaleString() : '—';
+      document.getElementById('tokCacheRead').textContent  = cacheRead  > 0 ? `${cacheRead.toLocaleString()} ✓` : '—';
+      document.getElementById('tokOut').textContent        = outTok.toLocaleString();
+      document.getElementById('tokCost').textContent       = `${p.label} · 약 $${costUSD.toFixed(4)} (₩${costKRW})${cacheHit ? ' 🔁캐시 절약' : ''}`;
+      document.getElementById('tokenBar').classList.add('show');
+    }
+
+    const parsed = parseResponse(fullText);
+
+    const ids = ['content0','content1','content2','content3'];
+    const vals = [parsed.suggestions, parsed.checkNeeded, parsed.summary, parsed.revised];
+    vals.forEach((v, i) => {
+      document.getElementById(ids[i]).textContent = v || '(내용 없음)';
+    });
+
+    document.getElementById('badge0').textContent = countNonEmptyLines(parsed.suggestions) || '';
+    document.getElementById('badge1').textContent = countNonEmptyLines(parsed.checkNeeded) || '';
+
+    document.getElementById('results').classList.add('show');
+    switchTab(0);
+
+  } catch (err) {
+    setLoading(false);
+    hideStream();
+    showError(err.message);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  Copy button
+// ═══════════════════════════════════════════════
+function copyRevised() {
+  const text = document.getElementById('content3').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '복사됨!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '복사 실패';
+    setTimeout(() => { btn.textContent = '복사'; }, 2000);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  Init
+// ═══════════════════════════════════════════════
+refreshKeyStatus();
+loadGlossary();
+</script>
+</body>
+</html>

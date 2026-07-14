@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UMFF AI 검수 도구 — 현황 보고서</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:        #1b3a5c;
+      --blue-light:  #2a5080;
+      --blue-pale:   #eef3f9;
+      --green:       #2a7d5f;
+      --green-light: #38a87e;
+      --green-pale:  #e8f5ef;
+      --purple-pale: #f5f0ff;
+      --purple:      #5b2be0;
+      --purple-border:#c9b8f5;
+      --orange:      #c05a10;
+      --orange-pale: #fff3e8;
+      --orange-border:#f0b080;
+      --red:         #c0392b;
+      --red-pale:    #fff0ee;
+      --yellow:      #9a7200;
+      --yellow-pale: #fffbea;
+      --bg:          #f2f4f7;
+      --surface:     #ffffff;
+      --border:      #dde2e8;
+      --text:        #1a1a1a;
+      --muted:       #6b7280;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      font-size: 14px;
+    }
+
+    /* ─── Cover ─── */
+    .cover {
+      background: var(--blue);
+      color: #fff;
+      padding: 64px 60px 56px;
+    }
+    .cover-eyebrow {
+      font-size: .72rem; letter-spacing: .18em; opacity: .55;
+      text-transform: uppercase; margin-bottom: 18px;
+    }
+    .cover-title {
+      font-size: 2rem; font-weight: 900; line-height: 1.25;
+      margin-bottom: 14px;
+    }
+    .cover-sub   { font-size: .95rem; opacity: .65; margin-bottom: 44px; }
+    .cover-meta  { font-size: .78rem; opacity: .45; }
+
+    /* ─── Container ─── */
+    .container { max-width: 860px; margin: 0 auto; padding: 36px 20px 60px; }
+
+    /* ─── TOC ─── */
+    .toc {
+      background: var(--surface);
+      border-radius: 12px; padding: 26px 30px;
+      margin-bottom: 32px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .toc-heading {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .12em; color: var(--muted); margin-bottom: 14px;
+    }
+    .toc-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 5px 20px;
+      list-style: none;
+    }
+    .toc-grid li a {
+      display: flex; align-items: center; gap: 8px;
+      color: var(--blue); text-decoration: none; font-size: .85rem;
+    }
+    .toc-grid li a:hover { text-decoration: underline; }
+    .toc-n { font-size: .7rem; color: var(--muted); font-weight: 700; min-width: 18px; }
+
+    /* ─── Section ─── */
+    .section {
+      background: var(--surface);
+      border-radius: 12px; padding: 30px 34px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .s-label {
+      font-size: .65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .14em; color: var(--green); margin-bottom: 4px;
+    }
+    .s-title {
+      font-size: 1.15rem; font-weight: 900; color: var(--blue);
+      margin-bottom: 18px; padding-bottom: 12px;
+      border-bottom: 2px solid var(--border);
+    }
+    .s-lead {
+      font-size: .88rem; color: var(--muted);
+      margin-bottom: 18px; line-height: 1.7;
+    }
+
+    /* ─── Tables ─── */
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; margin: 14px 0; }
+    th {
+      background: var(--blue); color: #fff;
+      padding: 9px 13px; text-align: left;
+      font-size: .78rem; font-weight: 700;
+    }
+    td { padding: 8px 13px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:nth-child(even) td { background: #f8f9fc; }
+    tr:last-child td { border-bottom: none; }
+    .tc { text-align: center; }
+
+    /* ─── Horizontal flow ─── */
+    .flow-h {
+      display: flex; align-items: stretch; flex-wrap: wrap;
+      gap: 0; margin: 20px 0;
+    }
+    .fbox {
+      flex: 1; min-width: 110px;
+      border-radius: 10px; padding: 14px 14px;
+      text-align: center; font-size: .82rem; font-weight: 700;
+      line-height: 1.5;
+    }
+    .fbox.blue   { background: var(--blue-pale);   border: 1.5px solid #b0c8e8; color: var(--blue); }
+    .fbox.green  { background: var(--green-pale);  border: 1.5px solid #a0d8bc; color: var(--green); }
+    .fbox.purple { background: var(--purple-pale); border: 1.5px solid var(--purple-border); color: var(--purple); }
+    .fbox.orange { background: var(--orange-pale); border: 1.5px solid var(--orange-border); color: var(--orange); }
+    .farrow { font-size: 1.4rem; color: var(--muted); padding: 0 7px; display: flex; align-items: center; flex-shrink: 0; }
+    .fbox small { display: block; font-weight: 400; font-size: .75rem; margin-top: 4px; opacity: .8; }
+
+    /* ─── Vertical flow ─── */
+    .flow-v {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0; margin: 18px auto; max-width: 500px;
+    }
+    .fvbox {
+      width: 100%; border-radius: 10px;
+      padding: 14px 20px; font-size: .85rem;
+    }
+    .fvbox.blue   { background: var(--blue-pale);   border: 1.5px solid #b0c8e8; }
+    .fvbox.green  { background: var(--green-pale);  border: 1.5px solid #a0d8bc; }
+    .fvbox.orange { background: var(--orange-pale); border: 1.5px solid var(--orange-border); }
+    .fvtitle { font-weight: 700; margin-bottom: 6px; font-size: .9rem; }
+    .fvtitle.blue   { color: var(--blue); }
+    .fvtitle.green  { color: var(--green); }
+    .fvtitle.orange { color: var(--orange); }
+    .fvbox ul { list-style: none; padding: 0; }
+    .fvbox ul li { padding: 2px 0; font-size: .82rem; }
+    .fvbox ul li::before { content: "· "; color: var(--muted); }
+    .fvarrow { font-size: 1.6rem; color: var(--muted); padding: 3px 0; line-height: 1; }
+
+    /* ─── Callout ─── */
+    .callout {
+      border-radius: 8px; padding: 13px 17px;
+      margin: 14px 0; font-size: .85rem; line-height: 1.65;
+    }
+    .callout.info   { background: var(--blue-pale);   border-left: 4px solid var(--blue);   }
+    .callout.tip    { background: var(--green-pale);  border-left: 4px solid var(--green);  }
+    .callout.warn   { background: var(--yellow-pale); border-left: 4px solid #c8a000;       }
+    .callout.danger { background: var(--red-pale);    border-left: 4px solid var(--red);    }
+    .callout b {
+      display: block; margin-bottom: 4px;
+      font-size: .72rem; text-transform: uppercase; letter-spacing: .06em;
+    }
+    .callout.info   b { color: var(--blue); }
+    .callout.tip    b { color: var(--green); }
+    .callout.warn   b { color: #9a7200; }
+    .callout.danger b { color: var(--red); }
+
+    /* ─── Risk colors ─── */
+    .risk-h { background: #fff0ee; color: var(--red); font-weight: 700; }
+    .risk-m { background: var(--yellow-pale); color: var(--yellow); font-weight: 700; }
+    .risk-l { background: var(--green-pale);  color: var(--green);  font-weight: 700; }
+
+    /* ─── Model cards ─── */
+    .model-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+    .mcard { border-radius: 10px; padding: 16px 18px; }
+    .mcard.sonnet { background: var(--blue-pale);   border: 1.5px solid #b0c8e8; }
+    .mcard.haiku  { background: var(--purple-pale); border: 1.5px solid var(--purple-border); }
+    .mcard-title  { font-weight: 700; font-size: .9rem; margin-bottom: 10px; }
+    .mcard.sonnet .mcard-title { color: var(--blue); }
+    .mcard.haiku  .mcard-title { color: var(--purple); }
+    .mcard ul { list-style: none; padding: 0; font-size: .82rem; }
+    .mcard ul li { padding: 2px 0; }
+    .ok::before  { content: "✔ "; color: var(--green); }
+    .no::before  { content: "✘ "; color: var(--red); }
+
+    /* ─── Cost cards ─── */
+    .cost-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+    .ccard {
+      border-radius: 10px; padding: 18px 16px;
+      text-align: center;
+    }
+    .ccard.a { background: var(--green-pale);  border: 1.5px solid #a0d8bc; }
+    .ccard.b { background: var(--blue-pale);   border: 1.5px solid #b0c8e8; }
+    .ccard.c { background: var(--orange-pale); border: 1.5px solid var(--orange-border); }
+    .ccard-label { font-size: .72rem; color: var(--muted); font-weight: 700; margin-bottom: 8px; line-height: 1.4; }
+    .ccard-usd   { font-size: 1.25rem; font-weight: 900; color: var(--blue); }
+    .ccard-krw   { font-size: .82rem; color: var(--muted); margin-top: 2px; }
+    .ccard-note  { font-size: .72rem; color: var(--muted); margin-top: 8px; }
+
+    /* ─── Cache compare ─── */
+    .cache-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px 0; }
+    .cbox { border-radius: 10px; padding: 16px 18px; font-size: .83rem; }
+    .cbox.before { background: var(--red-pale);   border: 1.5px solid #f5c6c6; }
+    .cbox.after  { background: var(--green-pale); border: 1.5px solid #a0d8bc; }
+    .cbox-title  { font-weight: 700; margin-bottom: 10px; font-size: .87rem; }
+    .cbox.before .cbox-title { color: var(--red); }
+    .cbox.after  .cbox-title { color: var(--green); }
+    .cstep { display: flex; align-items: flex-start; gap: 9px; margin: 6px 0; }
+    .cnum  {
+      background: var(--blue); color: #fff;
+      border-radius: 50%; width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .68rem; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+    }
+
+    /* ─── Step list ─── */
+    .steps { list-style: none; padding: 0; margin: 14px 0; }
+    .steps li {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .steps li:last-child { border-bottom: none; }
+    .snum {
+      background: var(--green); color: #fff;
+      border-radius: 50%; width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .78rem; font-weight: 700; flex-shrink: 0;
+    }
+    .sc { flex: 1; }
+    .st { font-weight: 700; margin-bottom: 2px; font-size: .88rem; }
+    .sd { font-size: .81rem; color: var(--muted); }
+
+    /* ─── Idea cards ─── */
+    .idea-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 11px; margin: 14px 0;
+    }
+    .icard { border-radius: 8px; padding: 13px 15px; font-size: .81rem; }
+    .icard.easy   { background: var(--green-pale);  border: 1px solid #a0d8bc; }
+    .icard.mid    { background: var(--blue-pale);   border: 1px solid #b0c8e8; }
+    .icard.hard   { background: var(--orange-pale); border: 1px solid var(--orange-border); }
+    .ibadge { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; }
+    .icard.easy .ibadge { color: var(--green); }
+    .icard.mid  .ibadge { color: var(--blue); }
+    .icard.hard .ibadge { color: var(--orange); }
+    .ititle { font-weight: 700; margin-bottom: 3px; }
+    .idesc  { color: var(--muted); font-size: .78rem; line-height: 1.5; }
+
+    /* ─── Print ─── */
+    @media print {
+      body { background: #fff; }
+      .section { box-shadow: none; border: 1px solid var(--border); page-break-inside: avoid; }
+      .cover, th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 표지 -->
+<div class="cover">
+  <div class="cover-eyebrow">울산울주세계산악영화제 · 사무국 내부 보고</div>
+  <div class="cover-title">AI 출판물 검수 도구<br>현황 보고 및 의사결정 요청</div>
+  <div class="cover-sub">UMFF Publication Review Tool — Status Report</div>
+  <div class="cover-meta">작성일: 2026년 6월 &nbsp;·&nbsp; 담당: 프로그래밍팀</div>
+</div>
+
+<div class="container">
+
+<!-- 목차 -->
+<div class="toc">
+  <div class="toc-heading">목차</div>
+  <ul class="toc-grid">
+    <li><a href="#s1"><span class="toc-n">01</span> 배경 및 필요성</a></li>
+    <li><a href="#s7"><span class="toc-n">07</span> 한국어·영어 동시 검수</a></li>
+    <li><a href="#s2"><span class="toc-n">02</span> 프로그램 작동 원리</a></li>
+    <li><a href="#s8"><span class="toc-n">08</span> 캐시 활용 — 비용 절감 원리</a></li>
+    <li><a href="#s3"><span class="toc-n">03</span> AI 모델 선택 이유 (Haiku vs Sonnet)</a></li>
+    <li><a href="#s9"><span class="toc-n">09</span> API 비용 계산</a></li>
+    <li><a href="#s4"><span class="toc-n">04</span> 검수 프로세스 (AI 1차 · 인간 2차)</a></li>
+    <li><a href="#s10"><span class="toc-n">10</span> 현재 한계 및 리스크</a></li>
+    <li><a href="#s5"><span class="toc-n">05</span> 현재 구현 기능</a></li>
+    <li><a href="#s11"><span class="toc-n">11</span> 향후 발전 방향 (아이데이션)</a></li>
+    <li><a href="#s6"><span class="toc-n">06</span> 활용법 — 사용 방법</a></li>
+    <li><a href="#s12"><span class="toc-n">12</span> 의사결정 요청</a></li>
+  </ul>
+</div>
+
+
+<!-- 01 배경 -->
+<div class="section" id="s1">
+  <div class="s-label">01</div>
+  <div class="s-title">배경 및 필요성</div>
+  <p class="s-lead">울주세계산악영화제 출판물(프로그램북·보도자료·자막 등)에는 감독명·작품명·행사 용어 등 고유명사가 매우 많습니다. 기존 수기 검수 방식에는 아래와 같은 구조적 한계가 있었습니다.</p>
+
+  <table>
+    <tr><th>항목</th><th>기존 수기 검수</th><th>AI 지원 검수 (현재)</th></tr>
+    <tr><td>고유명사 대조</td><td>175행 표를 눈으로 반복 대조</td><td>자동 전수 대조</td></tr>
+    <tr><td>표기 규칙 확인</td><td>규칙 문서 직접 참조, 기억에 의존</td><td>규칙 내장 · 자동 적용</td></tr>
+    <tr><td>누락 위험</td><td>피로 누적 시 높음</td><td>일정 수준 이하로 관리</td></tr>
+    <tr><td>처리 시간</td><td>긴 텍스트 1건당 20~40분</td><td>AI 1차 1~3분 (인간 최종 확인 별도)</td></tr>
+    <tr><td>검수 기록</td><td>없음</td><td>수정 제안 목록 자동 생성</td></tr>
+  </table>
+</div>
+
+
+<!-- 02 작동 원리 -->
+<div class="section" id="s2">
+  <div class="s-label">02</div>
+  <div class="s-title">프로그램 작동 원리 — 어떻게 돌아가는가</div>
+  <p class="s-lead">AI가 직접 인터넷을 검색하는 게 아닙니다. 우리가 미리 만들어둔 규칙과 단어 목록을 "작업 지시서"로 묶어 AI에 전달하고, 그 기준으로만 검수하게 합니다.</p>
+
+  <div class="flow-h">
+    <div class="fbox blue">① 담당자가<br>텍스트 붙여넣기</div>
+    <div class="farrow">→</div>
+    <div class="fbox blue">② 도구가 글로서리 + 규칙을<br>묶어서 AI에 전송</div>
+    <div class="farrow">→</div>
+    <div class="fbox green">③ AI가 기준에 따라<br>오류·미확정 항목 분류</div>
+    <div class="farrow">→</div>
+    <div class="fbox blue">④ 결과를<br>4개 탭으로 출력</div>
+  </div>
+
+  <div class="callout info">
+    <b>함께 전송되는 "작업 지시서" 내용</b>
+    · 고유명사 사전 — 확정된 감독명·작품명·장소명·행사 용어 등 175행<br>
+    · 표기 규칙 — 제목 꺽쇠 표기, 날짜 형식, 인명 로마자 표기 등 세부 규칙<br>
+    · 검수 원칙 — "사전에 없는 것은 [확인필요]로만 표시, 임의로 추측하지 않음" 등
+  </div>
+
+  <p style="font-size:.85rem; font-weight:700; margin: 16px 0 8px;">결과물 — 4개 탭</p>
+  <table>
+    <tr><th>탭</th><th>내용</th></tr>
+    <tr><td><strong>수정 제안 목록</strong></td><td>위치 / 원문 → 제안 / 사유 형식으로 건별 제시</td></tr>
+    <tr><td><strong>확인 필요 목록</strong></td><td>사전에 없어 확정 불가한 항목 ("틀렸다"가 아닌 "미확정" 표시)</td></tr>
+    <tr><td><strong>요약</strong></td><td>오탈자 N건 / 띄어쓰기 N건 / 고유명사 N건 / 표기규칙 N건 집계</td></tr>
+    <tr><td><strong>수정 반영본</strong></td><td>제안을 반영한 전체 글 — 원클릭 복사 가능</td></tr>
+  </table>
+</div>
+
+
+<!-- 03 모델 선택 이유 -->
+<div class="section" id="s3">
+  <div class="s-label">03</div>
+  <div class="s-title">AI 모델 선택 이유 — Haiku와 Sonnet을 나눈 이유</div>
+  <p class="s-lead">같은 회사(Anthropic)의 AI지만, 모델마다 성능과 비용이 다릅니다. 자동차로 치면 <strong>경차(Haiku)</strong>와 <strong>고급세단(Sonnet)</strong>의 차이입니다. 작업 성격에 맞는 모델을 골라 불필요한 비용을 줄입니다.</p>
+
+  <div class="model-grid">
+    <div class="mcard sonnet">
+      <div class="mcard-title">Sonnet 4.6 — 정확 · 권장</div>
+      <ul>
+        <li class="ok">프로그램북·보도자료 등 공식 출판물</li>
+        <li class="ok">감독명·작품명이 밀집된 텍스트</li>
+        <li class="ok">175행 전체를 꼼꼼히 대조해야 할 때</li>
+        <li class="ok">최종 인쇄 전 검수</li>
+        <li class="no">단순 오탈자만 볼 때 (비용 과다)</li>
+      </ul>
+    </div>
+    <div class="mcard haiku">
+      <div class="mcard-title">Haiku 4.5 — 빠름 · 저렴</div>
+      <ul>
+        <li class="ok">짧은 자막·캡션·제목 수준 텍스트</li>
+        <li class="ok">고유명사가 거의 없는 일반 문장</li>
+        <li class="ok">맞춤법·띄어쓰기 위주 초안 확인</li>
+        <li class="no">감독명·작품명 대조가 많을 때</li>
+        <li class="no">최종 검수 (Sonnet 권장)</li>
+      </ul>
+    </div>
+  </div>
+
+  <table>
+    <tr><th>구분</th><th class="tc">Sonnet 4.6</th><th class="tc">Haiku 4.5</th><th class="tc">배율 차이</th></tr>
+    <tr><td>입력 비용 (백만 토큰당)</td><td class="tc">$3.00</td><td class="tc">$0.80</td><td class="tc">Sonnet이 3.75배</td></tr>
+    <tr><td>출력 비용 (백만 토큰당)</td><td class="tc">$15.00</td><td class="tc">$4.00</td><td class="tc">Sonnet이 3.75배</td></tr>
+    <tr><td>고유명사 대조 정확도</td><td class="tc">높음</td><td class="tc">보통</td><td class="tc">—</td></tr>
+    <tr><td>처리 속도</td><td class="tc">보통</td><td class="tc">빠름</td><td class="tc">—</td></tr>
+  </table>
+
+  <div class="callout tip">
+    <b>권장 조합 — 이중 AI 검수</b>
+    <strong>Haiku 1차</strong> (명백한 오류를 빠르고 저렴하게 제거) → <strong>Sonnet 2차</strong> (정밀 검수) 순으로 사용하면 비용과 정확도를 동시에 확보할 수 있습니다.
+  </div>
+</div>
+
+
+<!-- 04 검수 프로세스 -->
+<div class="section" id="s4">
+  <div class="s-label">04</div>
+  <div class="s-title">검수 프로세스 — AI 1차 · 인간 2차</div>
+
+  <div class="flow-v">
+    <div class="fvbox blue">
+      <div class="fvtitle blue">원문 수신</div>
+      <div style="font-size:.81rem; color:var(--muted);">담당자가 검수할 텍스트를 도구에 붙여넣기</div>
+    </div>
+    <div class="fvarrow">↓</div>
+    <div class="fvbox green">
+      <div class="fvtitle green">① AI 1차 검수 (자동 · 1~3분)</div>
+      <ul>
+        <li>오탈자 / 띄어쓰기 / 맞춤법 확인</li>
+        <li>고유명사 사전 175행 전수 대조</li>
+        <li>표기 규칙 위반 탐지 (날짜·제목·인명 등)</li>
+        <li>한·영 병기 불일치 확인</li>
+        <li>사전 미등재 항목 → [확인필요] 자동 표시</li>
+      </ul>
+    </div>
+    <div class="fvarrow">↓</div>
+    <div class="fvbox blue">
+      <div class="fvtitle blue">결과 리포트 자동 생성</div>
+      <div style="font-size:.81rem; color:var(--muted);">수정 제안 목록 / 확인필요 목록 / 요약 집계 / 수정 반영본</div>
+    </div>
+    <div class="fvarrow">↓</div>
+    <div class="fvbox orange">
+      <div class="fvtitle orange">② 인간 2차 검토 (담당자 필수)</div>
+      <ul>
+        <li>[확인필요] 항목 원본 직접 확인</li>
+        <li>AI 제안 건별 수용 / 거부 판단</li>
+        <li>문맥·뉘앙스 최종 판단</li>
+        <li>최종본 확정</li>
+      </ul>
+    </div>
+    <div class="fvarrow">↓</div>
+    <div class="fvbox green">
+      <div class="fvtitle green">최종본 완성 · 인쇄</div>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <b>중요 원칙</b>
+    AI는 제안만 합니다. <strong>최종 확정은 반드시 담당자(사람)가 합니다.</strong> AI가 맞는 표현을 오류로 잘못 제안하는 경우가 있으므로 인간 2차 검토는 생략할 수 없습니다.
+  </div>
+</div>
+
+
+<!-- 05 현재 기능 -->
+<div class="section" id="s5">
+  <div class="s-label">05</div>
+  <div class="s-title">현재 구현된 기능 (정량)</div>
+
+  <table>
+    <tr><th>구분</th><th>내용</th></tr>
+    <tr><td>점검 항목</td><td>7가지 — 오탈자 / 띄어쓰기 / 맞춤법 / 고유명사 / 감독·작품명 / 표기규칙 / 한·영 병기 일치</td></tr>
+    <tr><td>고유명사 사전</td><td>175행 / 15개 카테고리 (인명·장소·섹션·시상·프로그램·해외영화제·학교 등)</td></tr>
+    <tr><td>지원 AI 모델</td><td>2가지 — Sonnet 4.6 (권장) / Haiku 4.5 (빠름·저렴)</td></tr>
+    <tr><td>결과 탭</td><td>4가지 — 수정제안 / 확인필요 / 요약 / 수정반영본</td></tr>
+    <tr><td>비용 표시</td><td>검수 후 실시간 토큰 사용량 + USD / KRW 자동 환산 표시</td></tr>
+    <tr><td>프롬프트 캐싱</td><td>적용됨 — 연속 검수 시 사전·규칙 비용 89% 절감</td></tr>
+    <tr><td>실시간 출력</td><td>결과 완성 전에 생성 내용 실시간 확인 가능 (스트리밍)</td></tr>
+    <tr><td>복사 기능</td><td>수정 반영본 원클릭 복사</td></tr>
+    <tr><td>글로서리 상태 표시</td><td>도구 상단에 사전 로드 성공/실패 상태 표시</td></tr>
+  </table>
+</div>
+
+
+<!-- 06 활용법 -->
+<div class="section" id="s6">
+  <div class="s-label">06</div>
+  <div class="s-title">활용법 — 단계별 사용 방법</div>
+
+  <ul class="steps">
+    <li>
+      <div class="snum">1</div>
+      <div class="sc">
+        <div class="st">브라우저에서 index.html 파일 열기</div>
+        <div class="sd">인터넷 연결 필요. 별도 설치 프로그램 없음.</div>
+      </div>
+    </li>
+    <li>
+      <div class="snum">2</div>
+      <div class="sc">
+        <div class="st">API Key 입력 (최초 1회만)</div>
+        <div class="sd">우측 상단 ⚙ API Key 버튼 → 발급받은 키 입력 → 저장. 이후 브라우저에 저장되어 재입력 불필요.</div>
+      </div>
+    </li>
+    <li>
+      <div class="snum">3</div>
+      <div class="sc">
+        <div class="st">모델 선택</div>
+        <div class="sd">공식 출판물·최종 검수 → Sonnet 4.6 / 초안·짧은 텍스트 → Haiku 4.5</div>
+      </div>
+    </li>
+    <li>
+      <div class="snum">4</div>
+      <div class="sc">
+        <div class="st">텍스트 붙여넣기</div>
+        <div class="sd">한국어·영어 혼합 텍스트 모두 가능. 한 번에 최대 약 2,000~3,000자 권장.</div>
+      </div>
+    </li>
+    <li>
+      <div class="snum">5</div>
+      <div class="sc">
+        <div class="st">감수 시작 클릭 → 1~3분 대기</div>
+        <div class="sd">결과가 실시간으로 화면에 표시됩니다.</div>
+      </div>
+    </li>
+    <li>
+      <div class="snum">6</div>
+      <div class="sc">
+        <div class="st">탭별 결과 확인 및 담당자 최종 검토</div>
+        <div class="sd">① 수정 제안 → 건별 수용/거부 &nbsp; ② [확인필요] → 원본 직접 확인 &nbsp; ③ 수정 반영본 → 복사 후 문서 적용</div>
+      </div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- 07 한영 동시 -->
+<div class="section" id="s7">
+  <div class="s-label">07</div>
+  <div class="s-title">한국어·영어 동시 검수 — 함께 넣어도 됩니다</div>
+
+  <div class="callout tip">
+    <b>결론 먼저</b>
+    한국어와 영어를 <strong>한 번에 붙여넣어 검수하는 것이 권장됩니다.</strong> 따로 넣는 것보다 효율적이고 비용도 낮습니다.
+  </div>
+
+  <table style="margin-top:14px;">
+    <tr><th>항목</th><th>따로 검수 (비추천)</th><th>함께 검수 (권장)</th></tr>
+    <tr><td>API 호출 횟수</td><td>2회</td><td>1회</td></tr>
+    <tr><td>한·영 일치 여부 확인</td><td>불가 — AI가 한쪽만 봄</td><td>가능 — AI가 양쪽 동시 비교</td></tr>
+    <tr><td>비용</td><td>상대적으로 더 많음</td><td>절감</td></tr>
+  </table>
+
+  <p style="font-size:.85rem; font-weight:700; margin: 18px 0 8px;">영어 텍스트는 비용이 훨씬 저렴합니다</p>
+  <p style="font-size:.83rem; color:var(--muted); margin-bottom:10px;">AI는 텍스트를 '토큰'이라는 처리 단위로 읽습니다. 한국어는 글자 1자당 약 1.5~2 토큰, 영어는 약 0.25~0.35 토큰입니다. 같은 글자 수라면 영어가 훨씬 저렴합니다.</p>
+
+  <table>
+    <tr><th>텍스트 구성</th><th class="tc">입력 토큰 수 (추정)</th><th class="tc">추가 비용</th></tr>
+    <tr><td>한국어 2,000자만</td><td class="tc">약 4,000 토큰</td><td class="tc">기준</td></tr>
+    <tr><td>한국어 2,000자 + 영어 500자</td><td class="tc">약 4,175 토큰</td><td class="tc">+약 4% (무시 가능)</td></tr>
+    <tr><td>영어 2,000자만</td><td class="tc">약 700 토큰</td><td class="tc">기준의 약 17% 수준</td></tr>
+  </table>
+
+  <div class="callout info">
+    <b>정리</b>
+    영어 검수가 추가된다고 비용이 크게 늘지 않습니다. 비용이 늘어나는 건 "영어를 검수해서"가 아니라 <strong>"검수해야 할 총 문서량이 늘어나서"</strong>입니다. 그리고 영어 문서는 한국어보다 훨씬 토큰 효율이 높습니다.
+  </div>
+</div>
+
+
+<!-- 08 캐시 -->
+<div class="section" id="s8">
+  <div class="s-label">08</div>
+  <div class="s-title">캐시 활용 — 글로서리를 "기억"시켜 비용 줄이기</div>
+  <p class="s-lead">AI에게 검수를 요청할 때마다, 고유명사 사전(175행) + 표기 규칙 전문을 매번 함께 전송해야 합니다. 이 "작업 지시서"를 읽는 데도 비용이 발생합니다. 캐시는 이 지시서를 AI 서버에 임시 저장해 두고 재사용하는 기능입니다.</p>
+
+  <div class="cache-pair">
+    <div class="cbox before">
+      <div class="cbox-title">캐시 없이 (매번 새로 읽음)</div>
+      <div class="cstep">
+        <div class="cnum">1</div>
+        <div>1번째 검수: 지시서 175행 전체 전송 → 비용 발생</div>
+      </div>
+      <div class="cstep">
+        <div class="cnum">2</div>
+        <div>2번째 검수: 또 전체 전송 → 또 같은 비용</div>
+      </div>
+      <div class="cstep">
+        <div class="cnum">N</div>
+        <div>N번째도 매번 반복 → 누적 비용 증가</div>
+      </div>
+    </div>
+    <div class="cbox after">
+      <div class="cbox-title">캐시 적용 (현재 구현 상태)</div>
+      <div class="cstep">
+        <div class="cnum">1</div>
+        <div>1번째 검수: 지시서를 AI 서버에 저장 (캐시 쓰기)</div>
+      </div>
+      <div class="cstep">
+        <div class="cnum">2</div>
+        <div>2번째 검수: 저장된 것 재사용 → <strong>비용 89% 절감</strong></div>
+      </div>
+      <div class="cstep">
+        <div class="cnum">N</div>
+        <div>N번째도 재사용 → 계속 절감</div>
+      </div>
+    </div>
+  </div>
+
+  <table style="margin-top:6px;">
+    <tr><th>구분</th><th class="tc">캐시 없음</th><th class="tc">캐시 적용 (현재)</th><th class="tc">절감</th></tr>
+    <tr>
+      <td>200세션 지시서 비용 (Sonnet 기준)</td>
+      <td class="tc">$3.00 (약 ₩4,140)</td>
+      <td class="tc">$0.32 (약 ₩442)</td>
+      <td class="tc" style="color:var(--green); font-weight:700;">89% ↓</td>
+    </tr>
+  </table>
+
+  <div class="callout warn">
+    <b>캐시 유효 시간 주의</b>
+    캐시는 최소 5분간 유지됩니다. <strong>한 작업 세션에서 브라우저를 열어둔 채 연속으로 여러 텍스트를 검수할수록 절감 효과가 커집니다.</strong> 브라우저를 닫거나 오래 쉬면 캐시가 만료되어 다음 첫 번째 호출 시 다시 저장됩니다. 재저장 비용은 약 ₩26 수준으로 무시할 만합니다.
+  </div>
+
+  <div class="callout tip">
+    <b>실무 팁 — 비용 최소화 방법</b>
+    여러 섹션을 나눠 검수할 때, <strong>브라우저를 열어둔 상태에서 연속으로 진행하세요.</strong> 중간에 오랫동안 다른 작업을 하면 캐시가 만료될 수 있습니다.
+  </div>
+</div>
+
+
+<!-- 09 비용 -->
+<div class="section" id="s9">
+  <div class="s-label">09</div>
+  <div class="s-title">API 비용 계산 — 방어적 최대치 추정</div>
+
+  <div class="callout info">
+    <b>전제 조건 (방어적 추정 — 실제는 이보다 낮을 가능성이 높음)</b>
+    · 세션당 텍스트: 한국어 2,000자 (약 4,000 토큰 — 보수적 적용)<br>
+    · AI 출력: 세션당 7,000 토큰 (상세 검수 보고서 4탭 포함)<br>
+    · 작업 지시서: 5,000 토큰 (고유명사 사전 + 표기 규칙)<br>
+    · 총 200세션 (200페이지 분량 기준)<br>
+    · 환율: $1 = ₩1,380 (보수적 적용)
+  </div>
+
+  <p style="font-size:.85rem; font-weight:700; margin:18px 0 8px;">▸ 1회 검수 비용</p>
+  <table>
+    <tr><th>항목</th><th class="tc">Sonnet 4.6</th><th class="tc">Haiku 4.5</th></tr>
+    <tr><td>첫 번째 호출 (캐시 저장 포함)</td><td class="tc">$0.136 (₩188)</td><td class="tc">$0.036 (₩50)</td></tr>
+    <tr><td>이후 호출 (캐시 재사용)</td><td class="tc">$0.119 (₩164)</td><td class="tc">$0.032 (₩44)</td></tr>
+  </table>
+
+  <p style="font-size:.85rem; font-weight:700; margin:20px 0 10px;">▸ 200세션 총 비용 비교</p>
+  <div class="cost-grid">
+    <div class="ccard a">
+      <div class="ccard-label">Haiku 단독<br>(저비용 · 초안용)</div>
+      <div class="ccard-usd">$6.40</div>
+      <div class="ccard-krw">약 ₩8,800</div>
+      <div class="ccard-note">단순 텍스트 전용</div>
+    </div>
+    <div class="ccard b">
+      <div class="ccard-label">Sonnet 단독<br>(권장 기본값)</div>
+      <div class="ccard-usd">$23.82</div>
+      <div class="ccard-krw">약 ₩32,900</div>
+      <div class="ccard-note">공식 출판물 기준</div>
+    </div>
+    <div class="ccard c">
+      <div class="ccard-label">Haiku 1차 + Sonnet 2차<br>(이중 AI 검수)</div>
+      <div class="ccard-usd">$30.22</div>
+      <div class="ccard-krw">약 ₩41,700</div>
+      <div class="ccard-note">최고 정확도</div>
+    </div>
+  </div>
+
+  <p style="font-size:.85rem; font-weight:700; margin:20px 0 10px;">▸ 이중 AI 검수 흐름 (Haiku 1차 → Sonnet 2차)</p>
+  <div class="flow-h" style="flex-wrap:wrap; gap:4px;">
+    <div class="fbox purple">Haiku 1차<small>명백한 오류 제거<br>₩44/세션</small></div>
+    <div class="farrow">→</div>
+    <div class="fbox blue">1차 수정본</div>
+    <div class="farrow">→</div>
+    <div class="fbox blue">Sonnet 2차<small>정밀 검수<br>₩164/세션</small></div>
+    <div class="farrow">→</div>
+    <div class="fbox green">최종 AI 결과</div>
+    <div class="farrow">→</div>
+    <div class="fbox orange">담당자<br>최종 확인</div>
+  </div>
+
+  <div class="callout tip">
+    <b>비용 관점 정리</b>
+    200페이지를 Sonnet 단독으로 검수해도 약 <strong>₩32,900</strong>입니다. 이중 AI 검수(Haiku+Sonnet)도 <strong>₩41,700</strong> 수준입니다. 외부 교열 업체 의뢰 비용과 비교하면 매우 낮은 수준입니다.
+  </div>
+</div>
+
+
+<!-- 10 리스크 -->
+<div class="section" id="s10">
+  <div class="s-label">10</div>
+  <div class="s-title">현재 한계 및 리스크 분석</div>
+
+  <table>
+    <tr>
+      <th>#</th>
+      <th>리스크</th>
+      <th class="tc">가능성</th>
+      <th class="tc">영향도</th>
+      <th>완화 방안</th>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>AI 과탐지 — 맞는 표현을 오류로 제안</td>
+      <td class="tc risk-m">중간</td>
+      <td class="tc risk-l">낮음</td>
+      <td>인간 2차 검토로 걸러짐</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>AI 미탐지 — 사전 미등재 항목의 실제 오류를 놓침</td>
+      <td class="tc risk-m">중간</td>
+      <td class="tc risk-h">높음</td>
+      <td>글로서리 완성도 향상이 핵심</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>사전 미등재 고유명사 — [확인필요] 처리, AI 판단 불가</td>
+      <td class="tc risk-h">높음</td>
+      <td class="tc risk-m">중간</td>
+      <td>미추가 시트 지속 업데이트</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>API 키 유출 (브라우저 로컬 저장 방식)</td>
+      <td class="tc risk-l">낮음</td>
+      <td class="tc risk-h">높음</td>
+      <td>개인 PC 전용 사용, 정기 키 교체</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>긴 텍스트 출력 잘림 (출력 한도 초과 시)</td>
+      <td class="tc risk-l">낮음</td>
+      <td class="tc risk-m">중간</td>
+      <td>텍스트를 2,000~3,000자씩 분할 입력</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>AI 제안 무비판 수용 (담당자 피로 누적 시)</td>
+      <td class="tc risk-m">중간</td>
+      <td class="tc risk-m">중간</td>
+      <td>수용/거부 내부 가이드 마련 필요</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Anthropic 서비스 장애 또는 모델 지원 종료</td>
+      <td class="tc risk-l">매우 낮음</td>
+      <td class="tc risk-h">높음</td>
+      <td>대체 모델 전환 가능 (구조 동일)</td>
+    </tr>
+  </table>
+
+  <div class="callout danger">
+    <b>가장 주의할 리스크 — 사전 미등재</b>
+    현재 사전에 없는 감독명·작품명은 AI가 오류인지 정상인지 판단할 수 없습니다. <strong>사전 완성도가 검수 품질을 직접 결정합니다.</strong> 미추가 시트 입력이 현재 가장 시급한 과제입니다.
+  </div>
+</div>
+
+
+<!-- 11 아이데이션 -->
+<div class="section" id="s11">
+  <div class="s-label">11</div>
+  <div class="s-title">향후 발전 방향 — 아이데이션</div>
+  <p class="s-lead">현재는 핵심 기능만 구현된 상태입니다. 아래 기능들은 우선순위를 논의하여 단계적으로 추가할 수 있습니다.</p>
+
+  <div class="idea-grid">
+    <div class="icard easy">
+      <div class="ibadge">단기 · 난이도 낮음</div>
+      <div class="ititle">변경 강조 표시</div>
+      <div class="idesc">원문 vs 수정본 차이를 색상으로 시각화 (형광펜 효과)</div>
+    </div>
+    <div class="icard easy">
+      <div class="ibadge">단기 · 난이도 낮음</div>
+      <div class="ititle">검수 이력 저장</div>
+      <div class="idesc">날짜별 검수 결과를 브라우저에 자동 저장, 다시 열람 가능</div>
+    </div>
+    <div class="icard easy">
+      <div class="ibadge">단기 · 난이도 낮음</div>
+      <div class="ititle">글로서리 관리 UI</div>
+      <div class="idesc">코드 없이 웹에서 사전을 직접 편집·추가 가능</div>
+    </div>
+    <div class="icard mid">
+      <div class="ibadge">중기 · 난이도 중간</div>
+      <div class="ititle">파일 업로드</div>
+      <div class="idesc">Word·TXT 파일을 직접 올려 텍스트 자동 추출 (복붙 불필요)</div>
+    </div>
+    <div class="icard mid">
+      <div class="ibadge">중기 · 난이도 중간</div>
+      <div class="ititle">배치 처리</div>
+      <div class="idesc">여러 섹션을 한 번에 올려 순차 자동 처리</div>
+    </div>
+    <div class="icard mid">
+      <div class="ibadge">중기 · 난이도 중간</div>
+      <div class="ititle">수용/거부 트래킹</div>
+      <div class="idesc">어떤 AI 제안을 채택/거부했는지 기록, 향후 통계 활용</div>
+    </div>
+    <div class="icard hard">
+      <div class="ibadge">장기 · 예산 필요</div>
+      <div class="ititle">통계 대시보드</div>
+      <div class="idesc">누적 검수 건수, 오류 카테고리별 분포, 개선 추이 시각화</div>
+    </div>
+    <div class="icard hard">
+      <div class="ibadge">장기 · 예산 필요</div>
+      <div class="ititle">팀 공유 모드</div>
+      <div class="idesc">검수 결과를 링크로 공유, 코멘트 추가 등 협업 기능</div>
+    </div>
+    <div class="icard hard">
+      <div class="ibadge">장기 · 예산 필요</div>
+      <div class="ititle">다국어 지원</div>
+      <div class="idesc">일본어·중국어 출판물 대응 (글로서리 확장 시)</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- 12 의사결정 -->
+<div class="section" id="s12">
+  <div class="s-label">12</div>
+  <div class="s-title">의사결정 요청 사항</div>
+  <p class="s-lead">아래 사항들은 담당자 단독으로 결정하기 어려운 항목들입니다. 팀 차원에서 함께 결정해 주시길 요청드립니다.</p>
+
+  <table>
+    <tr><th>#</th><th>결정 사항</th><th>선택지 (예시)</th><th>비고</th></tr>
+    <tr>
+      <td>1</td>
+      <td><strong>API 비용 예산 승인</strong></td>
+      <td>월 상한액 결정 (예: ₩50,000/월)</td>
+      <td>200세션 기준 최대 ₩41,700</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><strong>미추가 글로서리 시트 입력</strong></td>
+      <td>직접 입력 / 외부 위탁 / 추후 결정</td>
+      <td>검수 품질에 직접 영향</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><strong>공식 검수 프로세스 지정</strong></td>
+      <td>공식 도입 / 시범 운영 / 보류</td>
+      <td>인간 2차 검토 포함 전제</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><strong>적용 범위</strong></td>
+      <td>전체 출판물 / 프로그램북 우선 / 기타</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><strong>API 키 관리 주체</strong></td>
+      <td>담당자 개인 키 / 팀 공용 계정</td>
+      <td>보안·비용 추적 관련</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><strong>검수 모델 기본값</strong></td>
+      <td>Sonnet 단독 / Haiku→Sonnet 이중</td>
+      <td>비용 vs 정확도 트레이드오프</td>
+    </tr>
+  </table>
+
+  <div class="callout info" style="margin-top:20px;">
+    <b>현재 상태 요약</b>
+    · 도구는 즉시 사용 가능한 상태입니다 (175행 사전 기준 1차 검수 가능)<br>
+    · 미추가 글로서리 시트 업데이트 후 정확도가 크게 향상됩니다<br>
+    · 200페이지 기준 최대 비용 ₩41,700 (방어적 추정)<br>
+    · 최종 확정은 반드시 사람이 하는 구조를 유지합니다
+  </div>
+</div>
+
+
+<div style="text-align:center; padding:24px 0 8px; font-size:.72rem; color:var(--muted);">
+  울산울주세계산악영화제 사무국 내부 문서 &nbsp;·&nbsp; 2026년 6월
+</div>
+
+</div><!-- .container -->
+</body>
+</html>
