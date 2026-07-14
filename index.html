@@ -652,7 +652,7 @@ const MODEL_CONFIG = {
     label:      'Sonnet 5',
     // 2026-08-31까지 인트로 할인가($2/$10). 이후 정가($3/$15)로 직접 갱신 필요.
     input:      2.00,
-    cacheWrite: 2.50,
+    cacheWrite: 4.00, // 1시간 TTL = 입력가의 2배 (5분 TTL이었다면 2.50)
     cacheRead:  0.20,
     output:     10.00,
   },
@@ -660,7 +660,7 @@ const MODEL_CONFIG = {
     id:         'claude-haiku-4-5-20251001',
     label:      'Haiku 4.5',
     input:      0.80,
-    cacheWrite: 1.00,
+    cacheWrite: 1.60, // 1시간 TTL = 입력가의 2배 (5분 TTL이었다면 1.00)
     cacheRead:  0.08,
     output:     4.00,
   },
@@ -885,7 +885,7 @@ async function runReview() {
         max_tokens: 8000,
         stream: true,
         output_config: selectedModel === 'sonnet' ? { effort: 'medium' } : undefined,
-        system: [{ type: 'text', text: buildSystemPrompt(), cache_control: { type: 'ephemeral' } }],
+        system: [{ type: 'text', text: buildSystemPrompt(), cache_control: { type: 'ephemeral', ttl: '1h' } }],
         messages: [{ role: 'user', content: `다음 텍스트를 감수해 주세요:\n\n${text}` }]
       })
     });
